@@ -1,0 +1,19 @@
+# Secrets — never commit
+.env
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# ETL working files (raw downloads; regenerate via etl/build_data.py)
+etl/raw/
+
+# OS noise
+.DS_Store

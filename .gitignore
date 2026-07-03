@@ -17,3 +17,5 @@ etl/raw/
 
 # OS noise
 .DS_Store
+.vercel
+.env*

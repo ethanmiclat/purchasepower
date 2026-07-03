@@ -91,6 +91,37 @@ public-transit share; walk/bike/home trimming vehicle spending 10%.
 All other ratios are published CES values. Unit tests for this math:
 `src/lib/personalize.test.js`.
 
+### Tax tables (Phase 3)
+
+Compiled by `etl/build_taxes.py` into `src/lib/taxdata.json` (bundled
+with the app, not fetched). Tax year **2026**. Compiled 2026-07-02.
+
+- **State income tax** (brackets + standard deductions, single and
+  married-joint): Tax Foundation, "2026 State Income Tax Rates and
+  Brackets" (published Feb 2026), official data file
+  `2026-State-Individual-Income-Tax-Rates-Brackets.xlsx`, "2026" sheet.
+  https://taxfoundation.org/data/all/state/state-income-tax-rates-2026/
+- **Sales tax** (state rate + average combined state/local; display
+  only, never in the math since BEA price levels already include sales
+  taxes): Tax Foundation, "State and Local Sales Tax Rates, 2026"
+  (`2026-Sales-Tax-Data.xlsx`).
+  https://taxfoundation.org/data/all/state/sales-tax-rates/
+- **Federal brackets and standard deduction**: IRS Rev. Proc. 2025-32,
+  cross-checked against Tax Foundation's 2026 federal brackets page.
+- **FICA**: SSA 2026 wage base ($184,500); rates per IRS Topic 751,
+  including the 0.9% additional Medicare tax.
+- **NYC resident income tax**: statutory brackets (unindexed),
+  the one modeled local income tax.
+
+**Hand-coded override**: Washington's rows in the Tax Foundation sheet
+are its capital-gains excise tax, which does not apply to wages; WA is
+treated as a no-income-tax state for salary income.
+
+**Modeling limits (disclosed in the UI)**: standard deductions only; no
+itemizing, personal exemptions, credits, or local taxes beyond NYC;
+multi-state metros use their primary (first-listed) state. Unit tests
+against independently computed paychecks: `src/lib/tax.test.js`.
+
 ## Output files
 
 - `public/data/metros.json` — `{ meta, metros: [{ id, name, rpp: { all,

@@ -52,5 +52,6 @@ gitignored; never commit real key values.
 ## Roadmap
 
 - **v1**: baseline comparison across 386 BEA metros
-- **v2 (this)**: personalized weighting via a five-question profile
-- **v3**: tax-adjusted take-home comparison (federal + state)
+- **v2**: personalized weighting via a five-question profile
+- **v3 (this)**: tax-adjusted take-home comparison (2026 federal +
+  state + NYC, with unit-tested tax math)

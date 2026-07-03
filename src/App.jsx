@@ -7,6 +7,7 @@ import Questionnaire from "./components/Questionnaire.jsx";
 import Methodology from "./components/Methodology.jsx";
 import ResultCard from "./components/ResultCard.jsx";
 import Breakdown from "./components/Breakdown.jsx";
+import TaxPanel from "./components/TaxPanel.jsx";
 import WagePanel from "./components/WagePanel.jsx";
 
 const DEFAULTS = { from: "41860", to: "12420", salary: 85000 }; // SF -> Austin
@@ -203,6 +204,17 @@ export default function App() {
                         : null
                     }
                   />
+                  <div className="lg:col-span-2">
+                    <TaxPanel
+                      salary={salary}
+                      from={from}
+                      to={to}
+                      equivalent={
+                        (mode === "personal" && personal ? personal : generic)
+                          .equivalent
+                      }
+                    />
+                  </div>
                   <div className="lg:col-span-2">
                     <WagePanel
                       wages={data.wages}

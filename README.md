@@ -16,6 +16,7 @@ pull dates, and known data limitations.
 npm install
 npm run dev        # http://localhost:5173
 npm run build      # production build in dist/
+npm test           # unit tests (personalization math)
 ```
 
 ## Regenerate the data
@@ -27,8 +28,11 @@ etl/.venv/bin/python etl/build_data.py
 ```
 
 Re-downloads the BEA/BLS flat files and rewrites `public/data/*.json`.
-The script fails loudly on download errors or format changes and never
-writes partial output. `--use-cache` reuses files already in `etl/raw/`.
+Both scripts fail loudly on download errors or format changes and never
+write partial output. `--use-cache` reuses files already in `etl/raw/`.
+`etl/build_ces.py` (run after `build_data.py`) builds the Phase 2
+personalization dataset from the BLS Consumer Expenditure Survey and
+Census population estimates.
 
 ## Environment variables
 
@@ -47,6 +51,6 @@ gitignored; never commit real key values.
 
 ## Roadmap
 
-- **v1 (this)**: baseline comparison across 386 BEA metros
-- **v2**: personalized weighting via a short questionnaire
+- **v1**: baseline comparison across 386 BEA metros
+- **v2 (this)**: personalized weighting via a five-question profile
 - **v3**: tax-adjusted take-home comparison (federal + state)

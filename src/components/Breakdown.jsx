@@ -1,6 +1,6 @@
-import { categoryDiffs, pct, shortName } from "../lib/compare.js";
+import { CATEGORIES, pct, priceDiff, shortName } from "../lib/compare.js";
 
-function Row({ row }) {
+function Row({ row, biggest }) {
   const max = Math.max(row.from, row.to);
   const note =
     Math.abs(row.diff) < 0.005
@@ -8,15 +8,22 @@ function Row({ row }) {
       : `${pct(row.diff)} ${row.diff < 0 ? "lower" : "higher"}`;
 
   return (
-    <div className={row.biggest ? "" : "opacity-60"}>
-      <div className="mb-2.5 flex items-baseline justify-between">
-        <span className="text-[15px] font-semibold text-ink">{row.label}</span>
-        {row.biggest ? (
-          <span className="rounded-full bg-neg-soft px-2.5 py-0.5 text-[12px] font-semibold text-neg">
+    <div className={biggest ? "" : "opacity-60"}>
+      <div className="mb-2.5 flex items-baseline justify-between gap-3">
+        <span className="text-[15px] font-semibold text-ink">
+          {row.label}
+          {row.sub && (
+            <span className="ml-2 text-[11.5px] font-medium text-ink-4">
+              {row.sub}
+            </span>
+          )}
+        </span>
+        {biggest ? (
+          <span className="shrink-0 rounded-full bg-neg-soft px-2.5 py-0.5 text-[12px] font-semibold text-neg">
             biggest gap: {note}
           </span>
         ) : (
-          <span className="text-[12px] text-ink-4">{note}</span>
+          <span className="shrink-0 text-[12px] text-ink-4">{note}</span>
         )}
       </div>
       <div className="flex flex-col gap-2">
@@ -33,11 +40,32 @@ function Row({ row }) {
   );
 }
 
-// Paired-bar breakdown of BEA's four published price components. BEA has
-// no combined "services" index (only housing / utilities / other) and no
-// weights to blend one, so all four are shown as published.
-export default function Breakdown({ from, to }) {
-  const rows = categoryDiffs(from, to);
+// Paired-bar breakdown of BEA's four published price components, plus a
+// CES spending-based transportation row in personalized mode (BEA has no
+// transport price index and no combined "services" index; components are
+// shown as published, never blended).
+export default function Breakdown({ from, to, transport }) {
+  const rows = CATEGORIES.map(({ key, label }) => ({
+    key,
+    label,
+    from: from.rpp[key],
+    to: to.rpp[key],
+    diff: priceDiff(from.rpp[key], to.rpp[key]),
+  }));
+  if (transport) {
+    rows.push({
+      key: "transport",
+      label: "Transportation",
+      sub: "spending-based",
+      from: transport.from,
+      to: transport.to,
+      diff: priceDiff(transport.from, transport.to),
+    });
+  }
+  const biggestKey = rows.reduce((a, b) =>
+    Math.abs(b.diff) > Math.abs(a.diff) ? b : a
+  ).key;
+
   return (
     <section
       aria-label="Price breakdown by category"
@@ -58,12 +86,14 @@ export default function Breakdown({ from, to }) {
       </div>
       <div className="mt-7 flex flex-col gap-6">
         {rows.map((row) => (
-          <Row key={row.key} row={row} />
+          <Row key={row.key} row={row} biggest={row.key === biggestKey} />
         ))}
       </div>
       <p className="mt-7 border-t border-line pt-5 text-[12.5px] leading-relaxed text-ink-3">
         Bars show BEA price levels for each category, where the U.S. average
         is 100. Longer means more expensive.
+        {transport &&
+          " Transportation instead compares household transportation spending intensity (Consumer Expenditure Survey); BEA publishes no transport price index."}
       </p>
     </section>
   );

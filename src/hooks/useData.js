@@ -13,9 +13,13 @@ export function useData() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchJson("/data/metros.json"), fetchJson("/data/wages.json")])
-      .then(([metros, wages]) => {
-        if (!cancelled) setState({ status: "ready", metros, wages });
+    Promise.all([
+      fetchJson("/data/metros.json"),
+      fetchJson("/data/wages.json"),
+      fetchJson("/data/ces.json"),
+    ])
+      .then(([metros, wages, ces]) => {
+        if (!cancelled) setState({ status: "ready", metros, wages, ces });
       })
       .catch((error) => {
         if (!cancelled) setState({ status: "error", error });

@@ -31,7 +31,7 @@ import requests
 
 ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "etl" / "raw"
-OUT = ROOT / "public" / "data"
+OUT = ROOT / "src" / "data"
 
 USER_AGENT = "Mozilla/5.0 (compatible; cost-of-living-tool; ethanmic6@gmail.com)"
 
@@ -280,7 +280,7 @@ def main():
 
     metros_path = OUT / "metros.json"
     if not metros_path.exists():
-        fail("public/data/metros.json missing - run build_data.py first")
+        fail("src/data/metros.json missing - run build_data.py first")
     metros = json.loads(metros_path.read_text())["metros"]
 
     print("CES demographic cuts (cx time-series database)")
@@ -309,8 +309,12 @@ def main():
     # relatives multiplied (a disclosed approximation).
     transport_idx, direct = {}, 0
     missing_pop = []
+    largest = {}  # primary state -> [population, metro id], for map clicks
     for m in metros:
         state = m["name"].rsplit(",", 1)[1].strip().split("-")[0]
+        mpop = pops.get(m["id"], 0)
+        if mpop > largest.get(state, [0])[0]:
+            largest[state] = [mpop, m["id"]]
         region = STATE_REGION.get(state)
         if region is None:
             fail(f"no census region for state '{state}' ({m['name']})")
@@ -347,6 +351,7 @@ def main():
                       "single_parent", "single_other")
         },
         "transport_idx": transport_idx,
+        "largest_metro": {st: mid for st, (_, mid) in sorted(largest.items())},
     }
 
     (OUT / "ces.json").write_text(json.dumps(out, separators=(",", ":")))

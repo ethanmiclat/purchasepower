@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """Build the static data files the site serves.
 
-Downloads BEA Regional Price Parities (metro, MARPP) and BLS OEWS
-metro wage data, joins them on CBSA code, and writes:
+Downloads BEA Regional Price Parities (metro MARPP + state SARPP) and
+BLS OEWS metro wage data, joins metros on CBSA code, and writes:
 
-    public/data/metros.json   — metro list + RPP indices (loaded eagerly)
-    public/data/wages.json    — median wages by metro x major occupation group
+    src/data/metros.json   — metro list + RPP indices
+    src/data/wages.json    — median wages by metro x major occupation group
+    src/data/states.json   — state-level RPPs (Explore map), keyed by FIPS
+
+Outputs live in src/ so Vite bundles them at build time: the live site
+performs no runtime data fetching. Refreshing data = re-running this
+script and committing the JSON.
 
 Run:  etl/.venv/bin/python etl/build_data.py [--use-cache]
 
@@ -32,7 +37,7 @@ import requests
 
 ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "etl" / "raw"
-OUT = ROOT / "public" / "data"
+OUT = ROOT / "src" / "data"
 
 # BLS asks that automated requests identify the requester in the
 # User-Agent (https://www.bls.gov/bls/pss.htm); anonymous UAs get 403.
@@ -45,6 +50,21 @@ RPP_YEAR = "2024"
 OEWS_URL = "https://www.bls.gov/oes/special-requests/oesm25ma.zip"
 OEWS_XLSX = "oesm25ma/MSA_M2025_dl.xlsx"
 OEWS_VINTAGE = "May 2025"
+
+SARPP_URL = "https://apps.bea.gov/regional/zip/SARPP.zip"
+SARPP_CSV = "SARPP_STATE_2008_2024.csv"
+
+FIPS_USPS = {
+    "01": "AL", "02": "AK", "04": "AZ", "05": "AR", "06": "CA", "08": "CO",
+    "09": "CT", "10": "DE", "11": "DC", "12": "FL", "13": "GA", "15": "HI",
+    "16": "ID", "17": "IL", "18": "IN", "19": "IA", "20": "KS", "21": "KY",
+    "22": "LA", "23": "ME", "24": "MD", "25": "MA", "26": "MI", "27": "MN",
+    "28": "MS", "29": "MO", "30": "MT", "31": "NE", "32": "NV", "33": "NH",
+    "34": "NJ", "35": "NM", "36": "NY", "37": "NC", "38": "ND", "39": "OH",
+    "40": "OK", "41": "OR", "42": "PA", "44": "RI", "45": "SC", "46": "SD",
+    "47": "TN", "48": "TX", "49": "UT", "50": "VT", "51": "VA", "53": "WA",
+    "54": "WV", "55": "WI", "56": "WY",
+}
 
 # MARPP line codes. BEA splits services into housing (rents), utilities
 # and other — there is no combined "services" index and no published
@@ -164,6 +184,32 @@ def load_wages(xlsx_path: Path):
     return occ_list, wages
 
 
+def load_state_rpp(csv_path: Path) -> dict:
+    df = pd.read_csv(csv_path, dtype=str, engine="python", on_bad_lines="skip")
+    df["GeoFIPS"] = df["GeoFIPS"].str.strip().str.strip('"')
+    df = df[df["GeoFIPS"].str.fullmatch(r"\d{5}", na=False)]
+    df = df[df["GeoFIPS"].str.endswith("000") & (df["GeoFIPS"] != "00000")]
+    df["LineCode"] = df["LineCode"].astype(int)
+    df["value"] = pd.to_numeric(df[RPP_YEAR], errors="coerce")
+
+    states = {}
+    for fips5, grp in df.groupby("GeoFIPS"):
+        fips = fips5[:2]
+        if fips not in FIPS_USPS:
+            continue  # aggregate regions (e.g. New England) use 9x codes
+        codes = dict(zip(grp["LineCode"], grp["value"]))
+        if set(codes) != set(LINE_CODES) or any(pd.isna(v) for v in codes.values()):
+            fail(f"state {fips5}: incomplete RPP line codes")
+        states[fips] = {
+            "usps": FIPS_USPS[fips],
+            "name": grp["GeoName"].iloc[0].strip(' "*'),
+            "rpp": {LINE_CODES[c]: round(v, 3) for c, v in codes.items()},
+        }
+    if len(states) != 51:
+        fail(f"expected 51 states+DC in SARPP, got {len(states)}")
+    return states
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--use-cache", action="store_true")
@@ -177,6 +223,12 @@ def main():
     download(BEA_URL, bea_zip, args.use_cache)
     metros = load_rpp(extract(bea_zip, BEA_CSV))
     print(f"  {len(metros)} metros with complete {RPP_YEAR} RPPs")
+
+    print("BEA SARPP (Regional Price Parities, state)")
+    sarpp_zip = RAW / "SARPP.zip"
+    download(SARPP_URL, sarpp_zip, args.use_cache)
+    states = load_state_rpp(extract(sarpp_zip, SARPP_CSV))
+    print(f"  {len(states)} states with complete {RPP_YEAR} RPPs")
 
     print("BLS OEWS (metro wages)")
     oews_zip = RAW / "oesm25ma.zip"
@@ -206,12 +258,14 @@ def main():
     }
     wages_json = {"meta": meta, "occupations": occupations, "wages": matched}
 
+    states_json = {"meta": {"source": SARPP_URL, "rpp_year": int(RPP_YEAR),
+                            "pulled": pulled}, "states": states}
+
     (OUT / "metros.json").write_text(json.dumps(metros_json, separators=(",", ":")))
     (OUT / "wages.json").write_text(json.dumps(wages_json, separators=(",", ":")))
-    print(f"wrote {OUT / 'metros.json'} "
-          f"({(OUT / 'metros.json').stat().st_size // 1024} KB)")
-    print(f"wrote {OUT / 'wages.json'} "
-          f"({(OUT / 'wages.json').stat().st_size // 1024} KB)")
+    (OUT / "states.json").write_text(json.dumps(states_json, separators=(",", ":")))
+    for name in ("metros.json", "wages.json", "states.json"):
+        print(f"wrote {OUT / name} ({(OUT / name).stat().st_size // 1024} KB)")
 
 
 if __name__ == "__main__":

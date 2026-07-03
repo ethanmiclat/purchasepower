@@ -1,4 +1,5 @@
 import { CATEGORIES, pct, priceDiff, shortName } from "../lib/compare.js";
+import { useGrowBars } from "../lib/motion.js";
 
 function Row({ row, biggest }) {
   const max = Math.max(row.from, row.to);
@@ -28,10 +29,12 @@ function Row({ row, biggest }) {
       </div>
       <div className="flex flex-col gap-2">
         <div
+          data-bar
           className="h-[18px] rounded-[6px] bg-bar-a"
           style={{ width: `${(row.from / max) * 100}%` }}
         />
         <div
+          data-bar
           className="h-[18px] rounded-[6px] bg-bar-b"
           style={{ width: `${(row.to / max) * 100}%` }}
         />
@@ -65,9 +68,11 @@ export default function Breakdown({ from, to, transport }) {
   const biggestKey = rows.reduce((a, b) =>
     Math.abs(b.diff) > Math.abs(a.diff) ? b : a
   ).key;
+  const scope = useGrowBars([from.id, to.id, Boolean(transport)]);
 
   return (
     <section
+      ref={scope}
       aria-label="Price breakdown by category"
       className="rounded-[28px] bg-card p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_40px_rgba(0,0,0,0.08)] sm:p-9"
     >

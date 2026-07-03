@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { money, pct, shortName } from "../lib/compare.js";
 import {
   TAX_YEAR,
@@ -157,7 +158,7 @@ export default function TaxPanel({ salary, from, to, equivalent }) {
               type="checkbox"
               checked={nycResident}
               onChange={(e) => setNycResident(e.target.checked)}
-              className="h-4 w-4 accent-[#1d1d1f]"
+              className="h-4 w-4 accent-[#c13a22]"
             />
             Include New York City income tax (assumes living in the city
             proper)
@@ -170,6 +171,14 @@ export default function TaxPanel({ salary, from, to, equivalent }) {
         standard deduction only, employee-side FICA, no credits, itemizing,
         or local taxes beyond New York City. Real situations vary. This is
         not tax or financial advice; consult a professional about yours.
+        Full modeling limits are on the{" "}
+        <Link
+          to="/methodology"
+          className="font-semibold text-accent-strong underline decoration-accent/40 underline-offset-4"
+        >
+          methodology page
+        </Link>
+        .
       </p>
     </section>
   );

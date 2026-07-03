@@ -1,4 +1,5 @@
 import { money, pct, shortName } from "../lib/compare.js";
+import { useCountUp } from "../lib/motion.js";
 
 function Badge({ diff }) {
   const b =
@@ -11,7 +12,7 @@ function Badge({ diff }) {
           }
         : {
             text: `${pct(diff)} higher cost of living`,
-            cls: "bg-[rgba(192,57,43,0.18)] text-[#ff9484]",
+            cls: "bg-[rgba(179,38,75,0.25)] text-[#ff8fae]",
           };
   return (
     <div
@@ -59,6 +60,7 @@ export default function ResultCard({ salary, from, to, mode, setMode, generic, p
   const otherLabel = mode === "personal" ? "generic estimate" : "personalized";
   const refDelta =
     personal ? (personal.equivalent - generic.equivalent) / generic.equivalent : null;
+  const countRef = useCountUp(active.equivalent, (v) => money.format(v));
 
   return (
     <div className="flex flex-col">
@@ -77,7 +79,10 @@ export default function ResultCard({ salary, from, to, mode, setMode, generic, p
         <div className="mt-8 text-[15px] font-medium text-ink-4">
           Equivalent salary
         </div>
-        <div className="mt-1 text-[56px] font-bold leading-[1.05] tracking-[-0.03em] text-white sm:text-[72px]">
+        <div
+          ref={countRef}
+          className="mt-1 text-[56px] font-bold leading-[1.05] tracking-[-0.03em] text-white sm:text-[72px]"
+        >
           {money.format(active.equivalent)}
         </div>
         <Badge diff={active.diff} />

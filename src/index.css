@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* One shared palette for the whole site (adapted from the mockups, not
+   pasted): warm-gray neutrals, coral as the single brand accent, and
+   semantic green/crimson reserved for cheaper/pricier indicators.
+   Crimson (not plain red) keeps "pricier" visually distinct from the
+   coral accent. Bar colors are neutral data hues, not brand colors. */
 @theme {
   --color-canvas: #ececef;
   --color-card: #fbfbfd;
@@ -9,12 +14,19 @@
   --color-ink-4: #a1a1a6;
   --color-field: #f2f2f5;
   --color-line: #ececed;
+
+  --color-accent: #e8553e; /* graphics, large text, map ramp high end */
+  --color-accent-strong: #c13a22; /* buttons, links: AA on white/card */
+  --color-accent-soft: #fbeae5;
+
+  --color-pos: #2b8a58;
+  --color-pos-soft: #eaf7f0;
+  --color-neg: #b3264b;
+  --color-neg-soft: #f9e7ee;
+
   --color-bar-a: #6c7a91;
   --color-bar-b: #c1a17d;
-  --color-pos: #30a46c;
-  --color-pos-soft: #eaf7f0;
-  --color-neg: #c0392b;
-  --color-neg-soft: #fcefec;
+
   --font-sans:
     -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
     "Segoe UI", Helvetica, Arial, sans-serif;

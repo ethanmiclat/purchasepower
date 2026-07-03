@@ -1,14 +1,20 @@
 # Purchasing Power
 
-A cost-of-living comparison tool: enter a salary and two U.S. metro areas,
-see the equivalent salary in the destination and *why* the numbers differ
-(housing, goods, utilities, other services), plus what the local job market
-actually pays for your occupation.
+A cost-of-living comparison site: enter a salary and two U.S. metro
+areas, see the equivalent salary in the destination, *why* the numbers
+differ, what the local job market pays, and what taxes do to it.
 
-Data is official and pre-processed: BEA Regional Price Parities (2024) and
-BLS OEWS median wages (May 2025), baked into static JSON at build time.
-No backend, no runtime API calls. See `data/README.md` for exact sources,
-pull dates, and known data limitations.
+Pages: **Home** (landing + mini map), **Compare** (guided flow: inputs,
+optional personalization questionnaire, results with the tax-adjusted
+view), **Explore** (state-level choropleth; click through to a
+comparison), **Methodology** (sources, formulas, assumptions,
+disclaimers).
+
+Data is official and pre-processed: BEA Regional Price Parities (metro +
+state, 2024), BLS OEWS median wages (May 2025), BLS Consumer Expenditure
+Survey (2024), and 2026 tax tables. Everything is baked into the bundle
+at build time; the live site makes no API calls. See `data/README.md`
+for exact sources, pull dates, and known limitations.
 
 ## Run locally
 
@@ -27,12 +33,13 @@ etl/.venv/bin/pip install requests pandas openpyxl python-dotenv
 etl/.venv/bin/python etl/build_data.py
 ```
 
-Re-downloads the BEA/BLS flat files and rewrites `public/data/*.json`.
-Both scripts fail loudly on download errors or format changes and never
-write partial output. `--use-cache` reuses files already in `etl/raw/`.
-`etl/build_ces.py` (run after `build_data.py`) builds the Phase 2
-personalization dataset from the BLS Consumer Expenditure Survey and
-Census population estimates.
+Data refresh is ceremonial, not live: the scripts re-download the
+official flat files and rewrite `src/data/*.json` (and
+`src/lib/taxdata.json` via `etl/build_taxes.py`), which get committed
+and bundled at build time. All scripts fail loudly on download errors or
+format changes and never write partial output. `--use-cache` reuses
+files already in `etl/raw/`. Order: `build_data.py`, then
+`build_ces.py`.
 
 ## Environment variables
 
@@ -43,11 +50,14 @@ gitignored; never commit real key values.
 
 ## Project layout
 
-- `src/` - React app (Vite + Tailwind)
-- `src/lib/compare.js` - all comparison math (pure functions)
-- `etl/build_data.py` - one-shot ETL producing `public/data/*.json`
+- `src/pages/` - Home, Compare, Explore, Methodology (react-router)
+- `src/lib/` - comparison, personalization, and tax math (pure,
+  unit-tested) plus shared design tokens in `src/index.css`
+- `src/data/` - committed ETL outputs, bundled at build time
+- `etl/` - periodic data-refresh scripts (see above)
 - `data/README.md` - dataset provenance and limitations
-- `design-reference/` - approved visual mockups the UI is built against
+- `design-reference/` - original mockups (adapted into the shared
+  palette, not pasted verbatim)
 
 ## Roadmap
 

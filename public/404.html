@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Purchasing Power</title>
+    <script>
+      // GitHub Pages SPA redirect: encode the requested path into a query
+      // string and send the browser to index.html, which decodes it back
+      // into a real history entry so BrowserRouter can take over.
+      var segmentCount = 1; // repo is served at /purchasepower/, so keep 1 path segment as the base
+      var l = window.location;
+      var path = l.pathname.split("/").slice(1, 1 + segmentCount).join("/");
+      var rest = l.pathname.split("/").slice(1 + segmentCount).join("/");
+      l.replace(
+        l.protocol +
+          "//" +
+          l.hostname +
+          (l.port ? ":" + l.port : "") +
+          "/" +
+          path +
+          "/?/" +
+          rest.replace(/&/g, "~and~") +
+          (l.search ? "&" + l.search.slice(1).replace(/&/g, "~and~") : "") +
+          l.hash
+      );
+    </script>
+  </head>
+  <body></body>
+</html>

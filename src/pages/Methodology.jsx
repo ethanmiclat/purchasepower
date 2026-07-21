@@ -1,8 +1,16 @@
+import { Link } from "react-router-dom";
 import { usePageMeta } from "../lib/meta.js";
 import METROS from "../data/metros.json";
 import STATES from "../data/states.json";
 import CES from "../data/ces.json";
+import COUNTRIES from "../data/countries.json";
 import { TAX_YEAR } from "../lib/tax.js";
+import {
+  COHORTS,
+  CPI_FIRST_YEAR,
+  CPI_LAST_YEAR,
+  GEN_META,
+} from "../lib/historical.js";
 
 function Section({ title, children }) {
   return (
@@ -44,9 +52,11 @@ export default function Methodology() {
           How the numbers are made
         </h1>
         <p className="mt-3 text-[15.5px] leading-relaxed text-ink-2">
-          Everything on this site comes from official U.S. government data,
-          processed into static files when the site is built. Nothing is
-          estimated live, and every assumption we add on top is listed here.
+          Everything on this site comes from official statistical sources —
+          U.S. government data for metros and taxes, the World Bank for
+          countries — processed into static files when the site is built.
+          Nothing is estimated live, and every assumption we add on top is
+          listed here.
         </p>
       </header>
 
@@ -73,6 +83,83 @@ export default function Methodology() {
             Typical pay: <Ext href="https://www.bls.gov/oes/">BLS
             Occupational Employment and Wage Statistics</Ext> ({m.oews_vintage}),
             median annual wages for 22 major occupation groups per metro.
+          </p>
+        </Section>
+
+        <Section title="Comparing to a country">
+          <p>
+            Switching a side to a country prices it with the World Bank's{" "}
+            <Ext href="https://data.worldbank.org/indicator/PA.NUS.PPP">
+            price level index</Ext>, covering{" "}
+            {COUNTRIES.countries.length} countries ({COUNTRIES.meta.value_years}
+            {" "}vintages, retrieved {COUNTRIES.meta.pulled}). We compute it
+            from two live World Bank series — the PPP conversion factor
+            (PA.NUS.PPP) divided by the official exchange rate (PA.NUS.FCRF)
+            — which reproduces the Bank's own now-archived price-level ratio.
+            The result is 1.0 for the United States by construction, so we
+            re-base it to U.S. = 100, the same scale BEA uses for metros. A
+            country then slots into the exact same ratio math. The{" "}
+            <Link
+              to="/explore"
+              className="font-semibold text-accent-strong underline decoration-accent/40 underline-offset-4"
+            >
+              Explore map
+            </Link>{" "}
+            shades every country on this same scale.
+          </p>
+          <p>
+            We drop a handful of countries whose computed price level falls
+            outside a sane band ({COUNTRIES.meta.plausible_band[0]}–
+            {COUNTRIES.meta.plausible_band[1]} on the U.S. = 100 scale): those
+            values come from a distorted official exchange rate — a dollarized
+            economy, or a pegged or multiple-rate regime — not a real price
+            level, and would drive nonsense comparisons. They show as grey
+            "no data" on the map.
+          </p>
+          <p>
+            Deliberate limits: a country carries a single all-items price
+            level only. The World Bank does not publish the housing / goods /
+            utilities / services split BEA does, so international comparisons
+            show no category breakdown, and the after-tax and typical-pay
+            panels — built on U.S. tax tables and U.S. wage surveys — do not
+            appear. Figures stay in U.S. dollars throughout: a country result
+            is the USD you would need there for equal purchasing power, not a
+            live currency conversion.
+          </p>
+        </Section>
+
+        <Section title="Comparing across time & generations">
+          <p>
+            Each side also has a year. Change it and the salary is adjusted
+            for inflation with the{" "}
+            <Ext href="https://www.bls.gov/cpi/">BLS Consumer Price Index for
+            All Urban Consumers</Ext> (CPI-U, U.S. city average, all items),
+            annual averages from {CPI_FIRST_YEAR} to {CPI_LAST_YEAR}. Two
+            years' index values form a ratio — dollars in the earlier year
+            times CPI(later) / CPI(earlier) — that multiplies the place ratio.
+            When both years are {CPI_LAST_YEAR} (the default, "today") the
+            ratio is exactly 1 and nothing changes.
+          </p>
+          <p>
+            The generation buttons (Silent through Gen Z, using{" "}
+            <Ext href="https://www.pewresearch.org/short-reads/2019/01/17/where-millennials-end-and-generation-z-begins/">
+            Pew Research Center</Ext> birth-year boundaries) are only a
+            convenience: each jumps the year to a representative calendar year
+            for that cohort — roughly when they were coming of age, about age
+            25. We do not model a generation "at a fixed age"; you are always
+            picking an actual calendar year that CPI adjusts between.
+          </p>
+          <p>
+            Two honest limits. First, we hold <em>relative</em> place price
+            differences constant across time: we have current BEA parities,
+            not a metro-by-metro price history, so a historical comparison
+            adjusts only for national inflation, not for how a specific city's
+            relative expensiveness has shifted. Second, the median household
+            income shown next to a historical result (
+            <Ext href="https://fred.stlouisfed.org/series/MEHOINUSA646N">
+            {GEN_META.income_source_name}</Ext>, {GEN_META.income_years}) is
+            nominal context only — never part of the equivalence math — and
+            is unavailable before its series begins.
           </p>
         </Section>
 
@@ -168,10 +255,11 @@ export default function Methodology() {
             validated, and committed as static JSON that ships with the
             site; the live site makes no API calls. Current vintages: BEA
             RPP {m.rpp_year}, BLS OEWS {m.oews_vintage}, CES{" "}
-            {CES.meta.cx_year}, tax year {TAX_YEAR}, all retrieved{" "}
-            {m.pulled}. Refreshing means re-running the scripts when new
-            vintages publish (BEA in December, OEWS in spring, CES in
-            fall).
+            {CES.meta.cx_year}, tax year {TAX_YEAR}, World Bank price levels{" "}
+            {COUNTRIES.meta.value_years}, CPI-U through {CPI_LAST_YEAR}, all
+            retrieved {m.pulled}. Refreshing means re-running the scripts when
+            new vintages publish (BEA in December, OEWS in spring, CES in
+            fall, CPI monthly, World Bank periodically).
           </p>
         </Section>
       </div>

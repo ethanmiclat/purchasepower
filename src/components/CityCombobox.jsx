@@ -2,7 +2,15 @@ import { useId, useMemo, useRef, useState } from "react";
 
 const MAX_RESULTS = 8;
 
-export default function CityCombobox({ label, metros, value, onChange }) {
+export default function CityCombobox({
+  label,
+  metros,
+  value,
+  onChange,
+  placeholder = "Search 386 metro areas",
+  noun = "metro",
+  hideLabel = false,
+}) {
   const [query, setQuery] = useState(null); // null -> show selected name
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -64,7 +72,11 @@ export default function CityCombobox({ label, metros, value, onChange }) {
     <div className="relative">
       <label
         htmlFor={`${baseId}-input`}
-        className="mb-2 block text-[13px] font-semibold text-ink-2"
+        className={
+          hideLabel
+            ? "sr-only"
+            : "mb-2 block text-[13px] font-semibold text-ink-2"
+        }
       >
         {label}
       </label>
@@ -80,7 +92,7 @@ export default function CityCombobox({ label, metros, value, onChange }) {
         aria-autocomplete="list"
         autoComplete="off"
         spellCheck={false}
-        placeholder="Search 386 metro areas"
+        placeholder={placeholder}
         className="w-full rounded-[14px] border-[1.5px] border-transparent bg-field px-4 py-3 text-[15px] font-medium text-ink outline-none transition-colors placeholder:text-ink-4 focus:border-ink"
         value={text}
         onChange={(e) => {
@@ -105,7 +117,7 @@ export default function CityCombobox({ label, metros, value, onChange }) {
         >
           {results.length === 0 && (
             <li className="px-3 py-2.5 text-[14px] text-ink-3" role="presentation">
-              No metro matches "{query}"
+              No {noun} matches "{query}"
             </li>
           )}
           {results.map((m, i) => (

@@ -1,6 +1,8 @@
-// Pure comparison math over BEA RPP indices. An RPP is a price index where
-// the U.S. average = 100, so a salary's equivalent in another metro is
-// salary x (RPP_to / RPP_from), using BEA's all-items composite.
+// Pure comparison math over price-level indices. Both BEA RPP (U.S.
+// metros/states) and the World Bank price level (countries) are scaled so
+// the U.S. average = 100, so a salary's equivalent in another place is
+// salary x (index_to / index_from) using the all-items composite. The
+// place axis lives here; the time axis (CPI) lives in historical.js.
 
 export const CATEGORIES = [
   { key: "housing", label: "Housing" },
@@ -8,6 +10,18 @@ export const CATEGORIES = [
   { key: "utilities", label: "Utilities" },
   { key: "other_services", label: "Other services" },
 ];
+
+// A country record carries an `iso3` and only an all-items `rpp.all`; a
+// U.S. metro/state record carries the four BEA category components.
+export function isCountry(place) {
+  return place != null && place.iso3 != null;
+}
+
+// True when a place has BEA's four-way category breakdown (U.S. only);
+// countries do not, so the breakdown / tax / wage panels gate on this.
+export function hasCategories(place) {
+  return place != null && place.rpp != null && place.rpp.housing != null;
+}
 
 export function equivalentSalary(salary, from, to) {
   return salary * (to.rpp.all / from.rpp.all);
@@ -20,6 +34,7 @@ export function priceDiff(fromValue, toValue) {
 }
 
 export function categoryDiffs(from, to) {
+  if (!hasCategories(from) || !hasCategories(to)) return null;
   const rows = CATEGORIES.map(({ key, label }) => ({
     key,
     label,
@@ -33,9 +48,11 @@ export function categoryDiffs(from, to) {
   return rows.map((r) => ({ ...r, biggest: r.key === biggest.key }));
 }
 
-// "San Francisco-Oakland-Fremont, CA" -> "San Francisco"
-export function shortName(metro) {
-  return metro.name.split(",")[0].split("-")[0].trim();
+// "San Francisco-Oakland-Fremont, CA" -> "San Francisco"; a country keeps
+// its full name ("United States", "Japan").
+export function shortName(place) {
+  if (isCountry(place)) return place.name;
+  return place.name.split(",")[0].split("-")[0].trim();
 }
 
 export const money = new Intl.NumberFormat("en-US", {

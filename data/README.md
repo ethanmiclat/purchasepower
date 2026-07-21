@@ -131,10 +131,59 @@ itemizing, personal exemptions, credits, or local taxes beyond NYC;
 multi-state metros use their primary (first-listed) state. Unit tests
 against independently computed paychecks: `src/lib/tax.test.js`.
 
+### World Bank price levels (global comparison)
+
+Built by `etl/build_global.py` into `src/data/countries.json`. Prices
+each country for the global comparison mode.
+
+- **Source**: World Bank API, two live World Development Indicators
+  series — `PA.NUS.PPP` (PPP conversion factor, GDP, LCU per intl $) and
+  `PA.NUS.FCRF` (official exchange rate, LCU per US$). Their ratio,
+  PPP / exchange rate, is the country's overall price level relative to
+  the U.S. dollar; it is 1.0 for the United States by construction.
+- **Re-basing**: divided by the U.S. value and ×100, so USA = 100 — the
+  same scale BEA RPP uses, letting a country reuse the metro ratio math.
+- **Reproduces** the World Bank's now-archived price-level indicator
+  `PA.NUS.PPPC.RF` from its two live components.
+- **Coverage**: ~199 countries; per country we use the latest year both
+  series report. Public, no API key.
+- **Disclosed limits (in the UI)**: all-items level only (no BEA-style
+  category split), so no breakdown / tax / wage panels for countries;
+  figures stay in USD (no live currency conversion).
+
+### BLS CPI-U (inflation / time axis)
+
+Built by `etl/build_cpi.py` into `src/data/cpi.json`. Powers the
+per-side year picker and generational comparisons.
+
+- **Source**: BLS time-series flat file `cu.data.1.AllItems`, series
+  `CUUR0000SA0` (CPI-U, U.S. city average, all items, NSA), annual
+  averages (period `M13`), 1913–latest. Base 1982-1984 = 100. Public, no
+  key.
+- **Use**: `cpi[toYear] / cpi[fromYear]` converts dollars between years,
+  multiplying the place ratio. Same year ⇒ exactly 1.
+
+### Generations & median income (context)
+
+Built by `etl/build_generations.py` into `src/data/generations.json`.
+
+- **Cohorts**: Pew Research Center generation birth-year boundaries
+  (Silent → Gen Z), each with a representative calendar year (~age 25)
+  used only to seed the year picker — no age-normalized modeling.
+- **Median household income**: FRED series `MEHOINUSA646N` (nominal U.S.
+  Census median household income, 1984–latest), a keyless CSV export.
+  Shown as context beside historical results only — **never** part of
+  the equivalence math — and unavailable before its series begins.
+
 ## Output files
 
 - `src/data/metros.json` — `{ meta, metros: [{ id, name, rpp: { all,
   goods, housing, utilities, other_services } }] }` (~53 KB)
+- `src/data/countries.json` — `{ meta, countries: [{ iso3, name, region,
+  rpp: { all }, year }] }` (~20 KB)
+- `src/data/cpi.json` — `{ meta, annual: { <year>: index } }` (~1 KB)
+- `src/data/generations.json` — `{ meta, cohorts: [...], median_income:
+  { <year>: usd } }` (~1 KB)
 - `src/data/wages.json` — `{ meta, occupations: [{ code, title }],
   wages: { <metroId>: { <occCode>: medianAnnual | null } } }` (~144 KB)
 - `src/data/ces.json` — `{ meta, shares: { <profile>: { <bucket>:

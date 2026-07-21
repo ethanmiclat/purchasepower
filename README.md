@@ -31,6 +31,10 @@ npm test           # unit tests (personalization math)
 python3 -m venv etl/.venv
 etl/.venv/bin/pip install requests pandas openpyxl python-dotenv
 etl/.venv/bin/python etl/build_data.py
+etl/.venv/bin/python etl/build_ces.py
+etl/.venv/bin/python etl/build_global.py
+etl/.venv/bin/python etl/build_cpi.py
+etl/.venv/bin/python etl/build_generations.py
 ```
 
 Data refresh is ceremonial, not live: the scripts re-download the
@@ -38,8 +42,21 @@ official flat files and rewrite `src/data/*.json` (and
 `src/lib/taxdata.json` via `etl/build_taxes.py`), which get committed
 and bundled at build time. All scripts fail loudly on download errors or
 format changes and never write partial output. `--use-cache` reuses
-files already in `etl/raw/`. Order: `build_data.py`, then
-`build_ces.py`.
+files already in `etl/raw/`.
+
+Run order and outputs:
+
+- `build_data.py` → `metros.json`, `wages.json`, `states.json` (BEA RPP,
+  BLS OEWS). Run first — `build_ces.py` depends on `metros.json`.
+- `build_ces.py` → `ces.json` (BLS Consumer Expenditure Survey).
+- `build_global.py` → `countries.json` (World Bank price levels, for the
+  global comparison mode). Independent; no key.
+- `build_cpi.py` → `cpi.json` (BLS CPI-U annual index, the inflation /
+  time axis). Independent; no key.
+- `build_generations.py` → `generations.json` (Pew cohort definitions +
+  Census/FRED median household income, context only). Independent; no key.
+- `build_taxes.py` → `src/lib/taxdata.json`, run separately (reads
+  manually-placed Tax Foundation xlsx files from `etl/raw/`).
 
 ## Environment variables
 

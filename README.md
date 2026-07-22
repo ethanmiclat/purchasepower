@@ -33,6 +33,7 @@ etl/.venv/bin/pip install requests pandas openpyxl python-dotenv
 etl/.venv/bin/python etl/build_data.py
 etl/.venv/bin/python etl/build_ces.py
 etl/.venv/bin/python etl/build_global.py
+etl/.venv/bin/python etl/build_icp.py
 etl/.venv/bin/python etl/build_cpi.py
 etl/.venv/bin/python etl/build_generations.py
 ```
@@ -51,8 +52,10 @@ Run order and outputs:
 - `build_ces.py` → `ces.json` (BLS Consumer Expenditure Survey).
 - `build_global.py` → `countries.json` (World Bank price levels, for the
   global comparison mode). Independent; no key.
-- `build_cpi.py` → `cpi.json` (BLS CPI-U annual index, the inflation /
-  time axis). Independent; no key.
+- `build_icp.py` → `icp.json` (World Bank ICP 2021 category price levels
+  by country, for the country-vs-country breakdown). Independent; no key.
+- `build_cpi.py` → `cpi.json` (BLS CPI-U all-items index + major-group
+  categories, the inflation / time axis). Independent; no key.
 - `build_generations.py` → `generations.json` (Pew cohort definitions +
   Census/FRED median household income, context only). Independent; no key.
 - `build_taxes.py` → `src/lib/taxdata.json`, run separately (reads

@@ -6,6 +6,7 @@ import {
   clampYear,
   cohort,
   cohortForYear,
+  componentInflation,
   cpiRatio,
   hasCpi,
   medianIncome,
@@ -57,6 +58,30 @@ describe("cohorts", () => {
     expect(cohortForYear(1955).key).toBe("boomer");
     // Before the earliest defined cohort there is no match.
     expect(cohortForYear(1900)).toBeNull();
+  });
+});
+
+describe("componentInflation", () => {
+  it("returns comparable index pairs with growth for a recent span", () => {
+    const rows = componentInflation(2000, CPI_LAST_YEAR);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const r of rows) {
+      expect(r.from).toBeGreaterThan(0);
+      expect(r.to).toBeGreaterThan(0);
+      expect(r.diff).toBeCloseTo(r.to / r.from - 1, 10);
+    }
+    // Medical care outpaces apparel over this span (a stable, known fact).
+    const med = rows.find((r) => r.key === "medical");
+    const app = rows.find((r) => r.key === "apparel");
+    expect(med.diff).toBeGreaterThan(app.diff);
+  });
+
+  it("drops categories a year doesn't cover (recreation starts ~1993)", () => {
+    const old = componentInflation(1975, CPI_LAST_YEAR).map((r) => r.key);
+    expect(old).not.toContain("recreation");
+    expect(old).toContain("apparel"); // apparel goes back to 1913
+    const recent = componentInflation(2000, CPI_LAST_YEAR).map((r) => r.key);
+    expect(recent).toContain("recreation");
   });
 });
 

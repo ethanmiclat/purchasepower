@@ -1,18 +1,25 @@
 #!/usr/bin/env python3
-"""Build src/data/cpi.json - annual CPI-U index, the time axis for the
-generational comparison.
+"""Build src/data/cpi.json - annual CPI-U index (all items) plus the major
+spending categories, the time axis for the generational comparison.
 
 Source (public flat file, no API key):
 
-  BLS time-series database, series CUUR0000SA0 = Consumer Price Index for
-  All Urban Consumers (CPI-U), U.S. city average, all items, not
-  seasonally adjusted. We read the annual-average observations (period
-  M13) from cu.data.1.AllItems, giving one index value per year back to
-  1913 (1982-1984 = 100 base).
+  BLS time-series database, file cu.data.2.Summaries, CPI-U (series
+  prefix CUUR0000), U.S. city average, not seasonally adjusted. We read
+  the annual-average observations (period M13):
 
-  A ratio of two years' index values converts dollars between them:
-  cpi[to] / cpi[from]. This is the national inflation adjustment layered
-  on top of the place-based BEA ratio in the comparison.
+    - All items (SA0), 1913-latest, 1982-1984 = 100 base -> the headline
+      inflation ratio cpi[to] / cpi[from].
+    - The major expenditure groups (food, housing, apparel, transport,
+      medical care, recreation, education & communication, other) ->
+      a category breakdown of *national* inflation between two years.
+      These are national, not metro-specific (BEA regional parities only
+      exist from ~2008, so historical price levels by city do not exist).
+
+  Category coverage varies by series (apparel to 1913, medical/transport
+  to 1935, food/housing/other to 1967, recreation/education to 1993), so
+  each is stored with whatever years it has and the UI shows only the
+  categories present for both selected years.
 
 Run:  etl/.venv/bin/python etl/build_cpi.py [--use-cache]
 
@@ -35,11 +42,26 @@ OUT = ROOT / "src" / "data"
 
 USER_AGENT = "Mozilla/5.0 (compatible; cost-of-living-tool; ethanmic6@gmail.com)"
 
-CU_URL = "https://download.bls.gov/pub/time.series/cu/cu.data.1.AllItems"
-SERIES_ID = "CUUR0000SA0"   # CPI-U, U.S. city average, all items, NSA
+CU_URL = "https://download.bls.gov/pub/time.series/cu/cu.data.2.Summaries"
+ALL_ITEMS = "CUUR0000SA0"    # CPI-U, U.S. city average, all items, NSA
 ANNUAL_PERIOD = "M13"        # annual average
 BASE_PERIOD = "1982-1984 = 100"
-MIN_YEARS = 100              # CPI-U starts 1913; anything short means broken
+MIN_YEARS = 100              # all-items starts 1913; short means broken
+
+# CPI-U major expenditure groups (series id -> display label). These are
+# the BLS groupings, which do not map one-to-one onto BEA's metro
+# categories, so they are shown under their own names.
+COMPONENTS = [
+    ("food", "CUUR0000SAF", "Food & beverages"),
+    ("housing", "CUUR0000SAH", "Housing"),
+    ("apparel", "CUUR0000SAA", "Apparel"),
+    ("transport", "CUUR0000SAT", "Transportation"),
+    ("medical", "CUUR0000SAM", "Medical care"),
+    ("recreation", "CUUR0000SAR", "Recreation"),
+    ("education", "CUUR0000SAE", "Education & communication"),
+    ("other", "CUUR0000SAG", "Other goods & services"),
+]
+MIN_COMPONENT_YEARS = 30  # newest group (recreation/education) is ~1993+
 
 
 def fail(msg):
@@ -66,8 +88,9 @@ def download(url, dest, use_cache):
     fail(f"download failed after 3 attempts: {url}\n{last}")
 
 
-def load_annual(path):
-    annual = {}
+def load_annual(path, series_ids):
+    """series_id -> {year: index} for the annual (M13) observations."""
+    out = {sid: {} for sid in series_ids}
     with open(path, encoding="utf-8") as f:
         reader = csv.reader(f, delimiter="\t")
         header = [c.strip() for c in next(reader)]
@@ -75,16 +98,10 @@ def load_annual(path):
         for row in reader:
             if not row:
                 continue
-            if row[idx["series_id"]].strip() != SERIES_ID:
-                continue
-            if row[idx["period"]].strip() != ANNUAL_PERIOD:
-                continue
-            year = int(row[idx["year"]])
-            annual[year] = round(float(row[idx["value"]]), 3)
-    if len(annual) < MIN_YEARS:
-        fail(f"only {len(annual)} annual CPI points for {SERIES_ID} "
-             f"(expected >= {MIN_YEARS}) - series or period code changed?")
-    return annual
+            sid = row[idx["series_id"]].strip()
+            if sid in out and row[idx["period"]].strip() == ANNUAL_PERIOD:
+                out[sid][int(row[idx["year"]])] = round(float(row[idx["value"]]), 3)
+    return out
 
 
 def main():
@@ -95,26 +112,53 @@ def main():
     RAW.mkdir(parents=True, exist_ok=True)
     OUT.mkdir(parents=True, exist_ok=True)
 
-    print(f"BLS CPI-U annual index ({SERIES_ID})")
-    dest = RAW / "cu.data.1.AllItems"
+    print("BLS CPI-U annual index + major groups (cu.data.2.Summaries)")
+    dest = RAW / "cu.data.2.Summaries"
     download(CU_URL, dest, args.use_cache)
-    annual = load_annual(dest)
+
+    series_ids = [ALL_ITEMS] + [sid for _, sid, _ in COMPONENTS]
+    series = load_annual(dest, series_ids)
+
+    annual = series[ALL_ITEMS]
+    if len(annual) < MIN_YEARS:
+        fail(f"only {len(annual)} annual points for {ALL_ITEMS} "
+             f"(expected >= {MIN_YEARS}) - series/period code changed?")
     first, last = min(annual), max(annual)
-    print(f"  {len(annual)} years, {first}-{last}; "
+    print(f"  all items: {len(annual)} years, {first}-{last}; "
           f"{first}={annual[first]}, {last}={annual[last]}")
+
+    components = []
+    for key, sid, label in COMPONENTS:
+        data = series[sid]
+        if len(data) < MIN_COMPONENT_YEARS:
+            fail(f"component {sid} ({label}): only {len(data)} years "
+                 f"(expected >= {MIN_COMPONENT_YEARS}) - series id changed?")
+        if data.get(last) is None:
+            fail(f"component {sid} ({label}) is missing the latest year {last}")
+        components.append({
+            "key": key,
+            "label": label,
+            "series": sid,
+            "first_year": min(data),
+            "annual": {str(y): data[y] for y in sorted(data)},
+        })
+        print(f"  {key:11} {min(data)}-{max(data)} ({len(data)} yrs)")
 
     out = {
         "meta": {
             "source": CU_URL,
-            "series": SERIES_ID,
+            "series": ALL_ITEMS,
             "series_name": "CPI-U, U.S. city average, all items, NSA",
             "base_period": BASE_PERIOD,
             "first_year": first,
             "last_year": last,
+            "categories_note": "BLS major expenditure groups; national, not "
+                               "metro-specific",
             "pulled": time.strftime("%Y-%m-%d"),
         },
-        # year (string key) -> annual-average index
+        # year (string key) -> annual-average all-items index
         "annual": {str(y): annual[y] for y in sorted(annual)},
+        "components": components,
     }
     path = OUT / "cpi.json"
     path.write_text(json.dumps(out, separators=(",", ":")))

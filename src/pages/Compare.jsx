@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { usePageMeta } from "../lib/meta.js";
 import {
+  categoryDiffs,
   equivalentSalary,
   hasCategories,
   isCountry,
@@ -10,7 +11,12 @@ import {
   priceDiff,
   shortName,
 } from "../lib/compare.js";
-import { CURRENT_YEAR, cpiRatio } from "../lib/historical.js";
+import {
+  CURRENT_YEAR,
+  componentInflation,
+  cpiRatio,
+} from "../lib/historical.js";
+import { countryCategoryDiffs } from "../lib/icp.js";
 import { answeredCount, personalizedComparison } from "../lib/personalize.js";
 import ComparisonForm from "../components/ComparisonForm.jsx";
 import Questionnaire from "../components/Questionnaire.jsx";
@@ -129,6 +135,105 @@ export default function Compare() {
     if (params.get("to")) setParams({}, { replace: true });
   };
 
+  const bothCountries = isCountry(from) && isCountry(to);
+
+  // The breakdown card takes one of three forms, or a note explaining why
+  // none applies. Historical (time) takes priority when years differ.
+  const noteCard = (msg) => (
+    <section
+      aria-label="Breakdown availability"
+      className="flex items-center justify-center rounded-[28px] bg-card p-9 text-center shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_40px_rgba(0,0,0,0.08)]"
+    >
+      <p className="max-w-[36ch] text-[13.5px] leading-relaxed text-ink-3">{msg}</p>
+    </section>
+  );
+
+  function renderBreakdown() {
+    // 1. Across time (both U.S. metros, different years): national CPI by group.
+    if (usBoth && fromYear !== toYear) {
+      const rows = componentInflation(fromYear, toYear);
+      if (rows.length) {
+        return (
+          <Breakdown
+            title="What inflated the most"
+            legendA={String(fromYear)}
+            legendB={String(toYear)}
+            rows={rows}
+            footnote={
+              `Bars are the CPI-U index for each category in ${fromYear} and ${toYear} ` +
+              `(national, U.S. city average); a longer ${toYear} bar means it rose more. ` +
+              `No source has price history by metro, so this time breakdown is national.` +
+              (samePlace
+                ? ""
+                : " The two metros' present-day price gap is also in the headline number.")
+            }
+          />
+        );
+      }
+    }
+    // 2. Country vs country (today): ICP category price levels.
+    if (bothCountries && sameYearToday) {
+      const rows = countryCategoryDiffs(from.iso3, to.iso3);
+      if (rows) {
+        return (
+          <Breakdown
+            title="What drives the gap"
+            legendA={shortName(from)}
+            legendB={shortName(to)}
+            rows={rows}
+            footnote="Category price levels from the World Bank ICP 2021 benchmark, re-based so the U.S. = 100. ICP publishes category detail for benchmark years only, under its own groupings."
+          />
+        );
+      }
+    }
+    // 3. Place gap (both U.S. metros, today, different places): BEA categories.
+    if (usBoth && !samePlace && sameYearToday) {
+      const base = categoryDiffs(from, to);
+      const rows =
+        personal && mode === "personal"
+          ? [
+              ...base,
+              {
+                key: "transport",
+                label: "Transportation",
+                sub: "spending-based",
+                from: CES.transport_idx[from.id],
+                to: CES.transport_idx[to.id],
+                diff: priceDiff(CES.transport_idx[from.id], CES.transport_idx[to.id]),
+              },
+            ]
+          : base;
+      return (
+        <Breakdown
+          title="What drives the gap"
+          legendA={shortName(from)}
+          legendB={shortName(to)}
+          rows={rows}
+          footnote={
+            "Bars show BEA price levels for each category, where the U.S. average is 100. Longer means more expensive." +
+            (personal && mode === "personal"
+              ? " Transportation instead compares household transportation spending intensity (Consumer Expenditure Survey); BEA publishes no transport price index."
+              : "")
+          }
+        />
+      );
+    }
+    // 4. No shared breakdown available.
+    if (fromYear !== toYear) {
+      return noteCard(
+        "Historical category detail isn't available for international comparisons — the ICP publishes it only for recent benchmark years, and no source breaks price history out by metro."
+      );
+    }
+    if (isCountry(from) !== isCountry(to)) {
+      return noteCard(
+        "A U.S. metro and a country are priced on different category systems (BEA vs the World Bank's ICP), so there's no shared breakdown. Put two U.S. metros or two countries on each side to see one."
+      );
+    }
+    return noteCard(
+      "Same place on both sides — there's no place-by-category gap to break down."
+    );
+  }
+
   if (phase === "results" && ready) {
     return (
       <main className="mx-auto w-full max-w-[1080px] px-5 pt-10 sm:px-8">
@@ -166,28 +271,7 @@ export default function Compare() {
             generic={generic}
             personal={personal}
           />
-          {usBoth && !samePlace ? (
-            <Breakdown
-              from={from}
-              to={to}
-              transport={
-                personal && mode === "personal"
-                  ? { from: CES.transport_idx[from.id], to: CES.transport_idx[to.id] }
-                  : null
-              }
-            />
-          ) : (
-            <section
-              aria-label="Breakdown availability"
-              className="flex items-center justify-center rounded-[28px] bg-card p-9 text-center shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_40px_rgba(0,0,0,0.08)]"
-            >
-              <p className="max-w-[34ch] text-[13.5px] leading-relaxed text-ink-3">
-                {samePlace
-                  ? "Same place on both sides — this comparison is purely across time, so there's no place-by-category gap to break down."
-                  : "The category breakdown uses BEA's housing / goods / utilities / services split, which is published for U.S. metros only. Countries carry a single all-items price level."}
-              </p>
-            </section>
-          )}
+          {renderBreakdown()}
           {usBoth && sameYearToday && (
             <>
               <div className="lg:col-span-2">

@@ -151,17 +151,41 @@ each country for the global comparison mode.
   category split), so no breakdown / tax / wage panels for countries;
   figures stay in USD (no live currency conversion).
 
+### World Bank ICP category price levels (global breakdown)
+
+Built by `etl/build_icp.py` into `src/data/icp.json`. Powers the category
+breakdown on country-vs-country comparisons.
+
+- **Source**: World Bank International Comparison Program (ICP) 2021 (API
+  source 90), measure "Price level index (World = 100)" (classification
+  `PX.WL`), for 9 COICOP categories (food, housing & utilities, clothing,
+  health, transport, communication, recreation, education, restaurants).
+  Public, no key.
+- **Re-basing**: each category divided by the U.S. value ×100, so
+  U.S. = 100 per category — the same scale as everything else.
+- **Disclosed limits (in the UI)**: ICP category detail is a benchmark
+  year only (2021), under ICP's own groupings (not BEA's), so it shows
+  only for country-vs-country comparisons at today's dollars.
+
 ### BLS CPI-U (inflation / time axis)
 
 Built by `etl/build_cpi.py` into `src/data/cpi.json`. Powers the
-per-side year picker and generational comparisons.
+per-side year picker, generational comparisons, and the historical
+category breakdown.
 
-- **Source**: BLS time-series flat file `cu.data.1.AllItems`, series
-  `CUUR0000SA0` (CPI-U, U.S. city average, all items, NSA), annual
-  averages (period `M13`), 1913–latest. Base 1982-1984 = 100. Public, no
-  key.
+- **Source**: BLS time-series flat file `cu.data.2.Summaries`, CPI-U,
+  U.S. city average, NSA (period `M13`, annual averages). Base
+  1982-1984 = 100. Public, no key.
+  - All items (`CUUR0000SA0`), 1913–latest.
+  - Major expenditure groups (food `SAF`, housing `SAH`, apparel `SAA`,
+    transport `SAT`, medical `SAM`, recreation `SAR`, education `SAE`,
+    other `SAG`) with per-series coverage (apparel to 1913; medical and
+    transport to 1935; food/housing/other to 1967; recreation/education
+    to 1993).
 - **Use**: `cpi[toYear] / cpi[fromYear]` converts dollars between years,
-  multiplying the place ratio. Same year ⇒ exactly 1.
+  multiplying the place ratio (same year ⇒ exactly 1). The major groups
+  give a *national* category breakdown of inflation between two years —
+  there is no metro-level price history.
 
 ### Generations & median income (context)
 
@@ -181,7 +205,10 @@ Built by `etl/build_generations.py` into `src/data/generations.json`.
   goods, housing, utilities, other_services } }] }` (~53 KB)
 - `src/data/countries.json` — `{ meta, countries: [{ iso3, name, region,
   rpp: { all }, year }] }` (~20 KB)
-- `src/data/cpi.json` — `{ meta, annual: { <year>: index } }` (~1 KB)
+- `src/data/cpi.json` — `{ meta, annual: { <year>: index }, components:
+  [{ key, label, series, first_year, annual: { <year>: index } }] }` (~9 KB)
+- `src/data/icp.json` — `{ meta, categories: [{ key, label, coicop }],
+  countries: { <iso3>: { <categoryKey>: priceLevelUS100 } } }` (~32 KB)
 - `src/data/generations.json` — `{ meta, cohorts: [...], median_income:
   { <year>: usd } }` (~1 KB)
 - `src/data/wages.json` — `{ meta, occupations: [{ code, title }],

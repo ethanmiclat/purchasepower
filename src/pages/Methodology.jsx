@@ -11,6 +11,7 @@ import {
   CPI_LAST_YEAR,
   GEN_META,
 } from "../lib/historical.js";
+import { ICP_CATEGORIES, ICP_META } from "../lib/icp.js";
 
 function Section({ title, children }) {
   return (
@@ -117,14 +118,24 @@ export default function Methodology() {
             "no data" on the map.
           </p>
           <p>
-            Deliberate limits: a country carries a single all-items price
-            level only. The World Bank does not publish the housing / goods /
-            utilities / services split BEA does, so international comparisons
-            show no category breakdown, and the after-tax and typical-pay
-            panels — built on U.S. tax tables and U.S. wage surveys — do not
-            appear. Figures stay in U.S. dollars throughout: a country result
-            is the USD you would need there for equal purchasing power, not a
-            live currency conversion.
+            The headline number uses a single all-items price level. For a
+            category breakdown, a comparison between two countries adds one
+            from the <Ext href="https://www.worldbank.org/en/programs/icp">
+            World Bank International Comparison Program</Ext> ({ICP_META.round}):
+            price level indices for {ICP_CATEGORIES.length} expenditure
+            categories (food, housing &amp; utilities, health, transport,
+            and so on), each re-based to U.S. = 100. ICP publishes this
+            category detail for benchmark years only ({ICP_META.year}) and
+            under its own groupings, so it appears only for
+            country-versus-country comparisons at today's dollars — not for a
+            U.S. metro paired with a country, whose price taxonomies differ.
+          </p>
+          <p>
+            Other deliberate limits: the after-tax and typical-pay panels,
+            built on U.S. tax tables and U.S. wage surveys, do not appear for
+            countries. Figures stay in U.S. dollars throughout: a country
+            result is the USD you would need there for equal purchasing power,
+            not a live currency conversion.
           </p>
         </Section>
 
@@ -139,6 +150,17 @@ export default function Methodology() {
             times CPI(later) / CPI(earlier) — that multiplies the place ratio.
             When both years are {CPI_LAST_YEAR} (the default, "today") the
             ratio is exactly 1 and nothing changes.
+          </p>
+          <p>
+            A historical comparison also breaks inflation down by category —
+            how much food, housing, apparel, transport, medical care, and the
+            other CPI-U major groups each rose between the two years. This is
+            national (U.S. city average): there is no price history broken out
+            by metro, so the category bars are the same regardless of which
+            cities you pick. Coverage varies by group (apparel back to 1913,
+            medical and transport to the 1930s, food and housing to 1967,
+            recreation and education only to 1993), and a group is shown only
+            when both years are within its range.
           </p>
           <p>
             The generation buttons (Silent through Gen Z, using{" "}

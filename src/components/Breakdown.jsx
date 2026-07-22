@@ -1,4 +1,4 @@
-import { CATEGORIES, pct, priceDiff, shortName } from "../lib/compare.js";
+import { pct } from "../lib/compare.js";
 import { useGrowBars } from "../lib/motion.js";
 
 function Row({ row, biggest }) {
@@ -43,50 +43,35 @@ function Row({ row, biggest }) {
   );
 }
 
-// Paired-bar breakdown of BEA's four published price components, plus a
-// CES spending-based transportation row in personalized mode (BEA has no
-// transport price index and no combined "services" index; components are
-// shown as published, never blended).
-export default function Breakdown({ from, to, transport }) {
-  const rows = CATEGORIES.map(({ key, label }) => ({
-    key,
-    label,
-    from: from.rpp[key],
-    to: to.rpp[key],
-    diff: priceDiff(from.rpp[key], to.rpp[key]),
-  }));
-  if (transport) {
-    rows.push({
-      key: "transport",
-      label: "Transportation",
-      sub: "spending-based",
-      from: transport.from,
-      to: transport.to,
-      diff: priceDiff(transport.from, transport.to),
-    });
-  }
+// Generic paired-bar category breakdown. Each row carries a `from` and
+// `to` value on a comparable scale plus a relative `diff`; the two legend
+// labels name the two bars. The same component renders three cases:
+//  - place gap across BEA metro categories (U.S. metros, U.S. avg = 100)
+//  - inflation across CPI major groups between two years (bars are the
+//    index in each year; the longer second bar = more inflation)
+//  - price-level gap across ICP categories between two countries.
+// The "biggest gap" is whichever row has the largest absolute diff.
+export default function Breakdown({ title, legendA, legendB, rows, footnote }) {
   const biggestKey = rows.reduce((a, b) =>
     Math.abs(b.diff) > Math.abs(a.diff) ? b : a
   ).key;
-  const scope = useGrowBars([from.id, to.id, Boolean(transport)]);
+  const scope = useGrowBars([legendA, legendB, rows.length]);
 
   return (
     <section
       ref={scope}
-      aria-label="Price breakdown by category"
+      aria-label="Category breakdown"
       className="rounded-[28px] bg-card p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_40px_rgba(0,0,0,0.08)] sm:p-9"
     >
-      <h2 className="text-[15px] font-semibold text-ink">
-        What drives the gap
-      </h2>
+      <h2 className="text-[15px] font-semibold text-ink">{title}</h2>
       <div className="mt-4 flex items-center gap-5">
         <span className="flex items-center gap-2 text-[13px] text-ink-2">
           <span aria-hidden="true" className="h-[11px] w-[11px] rounded-[3px] bg-bar-a" />
-          {shortName(from)}
+          {legendA}
         </span>
         <span className="flex items-center gap-2 text-[13px] text-ink-2">
           <span aria-hidden="true" className="h-[11px] w-[11px] rounded-[3px] bg-bar-b" />
-          {shortName(to)}
+          {legendB}
         </span>
       </div>
       <div className="mt-7 flex flex-col gap-6">
@@ -94,12 +79,11 @@ export default function Breakdown({ from, to, transport }) {
           <Row key={row.key} row={row} biggest={row.key === biggestKey} />
         ))}
       </div>
-      <p className="mt-7 border-t border-line pt-5 text-[12.5px] leading-relaxed text-ink-3">
-        Bars show BEA price levels for each category, where the U.S. average
-        is 100. Longer means more expensive.
-        {transport &&
-          " Transportation instead compares household transportation spending intensity (Consumer Expenditure Survey); BEA publishes no transport price index."}
-      </p>
+      {footnote && (
+        <p className="mt-7 border-t border-line pt-5 text-[12.5px] leading-relaxed text-ink-3">
+          {footnote}
+        </p>
+      )}
     </section>
   );
 }

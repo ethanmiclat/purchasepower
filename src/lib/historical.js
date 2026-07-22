@@ -15,6 +15,7 @@ const annual = CPI.annual;
 
 export const CPI_FIRST_YEAR = CPI.meta.first_year;
 export const CPI_LAST_YEAR = CPI.meta.last_year;
+export const CPI_COMPONENTS = CPI.components;
 export const COHORTS = GEN.cohorts;
 export const GEN_META = GEN.meta;
 
@@ -59,4 +60,20 @@ export function cohortForYear(year) {
 export function medianIncome(year) {
   const v = GEN.median_income[String(year)];
   return v == null ? null : v;
+}
+
+// Per-category national inflation between two years: for each CPI major
+// group with data in BOTH years, its index then and now and the growth
+// factor. Rows drop out for years a category doesn't cover (e.g. the
+// recreation/education groups only start ~1993). These are national, not
+// metro-specific — the honest limit on historical price detail.
+export function componentInflation(fromYear, toYear) {
+  const rows = [];
+  for (const c of CPI_COMPONENTS) {
+    const a = c.annual[String(fromYear)];
+    const b = c.annual[String(toYear)];
+    if (a == null || b == null) continue;
+    rows.push({ key: c.key, label: c.label, from: a, to: b, diff: b / a - 1 });
+  }
+  return rows;
 }

@@ -2,17 +2,23 @@ import { money, pct, shortName } from "../lib/compare.js";
 import { CURRENT_YEAR, cpiRatio, medianIncome } from "../lib/historical.js";
 import { useCountUp } from "../lib/motion.js";
 
-function Badge({ diff }) {
+// `diff` is the place-only price gap (today's prices, both places); it
+// excludes any inflation adjustment, so when the two years differ the
+// label says "prices" rather than "cost of living" — the headline dollar
+// figure above also includes the CPI ratio disclosed in the inflation
+// line below, and this badge would otherwise look inconsistent with it.
+function Badge({ diff, yearsDiffer }) {
+  const noun = yearsDiffer ? "prices" : "cost of living";
   const b =
     Math.abs(diff) < 0.005
-      ? { text: "About the same cost of living", cls: "bg-white/10 text-ink-4" }
+      ? { text: `About the same ${noun}`, cls: "bg-white/10 text-ink-4" }
       : diff < 0
         ? {
-            text: `${pct(diff)} lower cost of living`,
+            text: `${pct(diff)} lower ${noun}`,
             cls: "bg-[rgba(48,163,108,0.16)] text-[#4ad991]",
           }
         : {
-            text: `${pct(diff)} higher cost of living`,
+            text: `${pct(diff)} higher ${noun}`,
             cls: "bg-[rgba(179,38,75,0.25)] text-[#ff8fae]",
           };
   return (
@@ -80,6 +86,7 @@ export default function ResultCard({
   setMode,
   generic,
   personal,
+  emphasized = false,
 }) {
   const active = mode === "personal" && personal ? personal : generic;
   const other = mode === "personal" && personal ? generic : personal;
@@ -98,9 +105,17 @@ export default function ResultCard({
       {personal && <ModeToggle mode={mode} setMode={setMode} />}
       <section
         aria-label="Equivalent salary result"
-        className="flex flex-1 flex-col items-center justify-center rounded-[28px] bg-ink px-8 py-12 text-center shadow-[0_1px_2px_rgba(0,0,0,0.06),0_18px_50px_rgba(0,0,0,0.22)] sm:px-12"
+        className={`flex flex-1 flex-col items-center justify-center rounded-[28px] bg-ink text-center shadow-[0_1px_2px_rgba(0,0,0,0.06),0_18px_50px_rgba(0,0,0,0.22)] ${
+          emphasized
+            ? "px-10 py-16 sm:px-16 sm:py-20"
+            : "px-8 py-12 sm:px-12"
+        }`}
       >
-        <div className="flex items-center gap-2.5 text-[14px] font-medium text-ink-4">
+        <div
+          className={`flex items-center gap-2.5 font-medium text-ink-4 ${
+            emphasized ? "text-[15px]" : "text-[14px]"
+          }`}
+        >
           <Endpoint place={from} year={fromYear} />
           <span aria-hidden="true" className="text-[#5a5a5f]">
             {"→"}
@@ -114,11 +129,15 @@ export default function ResultCard({
         </div>
         <div
           ref={countRef}
-          className="mt-1 text-[56px] font-bold leading-[1.05] tracking-[-0.03em] text-white sm:text-[72px]"
+          className={`mt-1 font-bold leading-[1.05] tracking-[-0.03em] text-white ${
+            emphasized
+              ? "text-[64px] sm:text-[88px]"
+              : "text-[56px] sm:text-[72px]"
+          }`}
         >
           {money.format(active.equivalent)}
         </div>
-        {!samePlace && <Badge diff={active.diff} />}
+        {!samePlace && <Badge diff={active.diff} yearsDiffer={yearsDiffer} />}
         <div className="mt-7 text-[14px] text-ink-3">
           from{" "}
           <span className="font-semibold text-[#f5f5f7]">

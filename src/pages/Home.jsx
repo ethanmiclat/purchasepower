@@ -45,10 +45,6 @@ export default function Home() {
               navigate(metro ? `/compare?to=${metro}` : "/explore");
             }}
           />
-          <p className="mt-2 text-center text-[12.5px] text-ink-3">
-            State price levels, BEA 2024. Click a state to compare against
-            its largest metro.
-          </p>
         </div>
       </section>
 

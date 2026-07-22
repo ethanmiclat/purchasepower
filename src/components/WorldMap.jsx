@@ -74,9 +74,66 @@ export function worldRampColor(v) {
   return `rgb(${RAMP.at(-1)[1].join(",")})`;
 }
 
+const SCALE = 130;
+// Width in projected px of one full 360°-longitude wrap, at SCALE, under
+// geoEquirectangular (x = lon_radians * scale). The geography is repeated at
+// every multiple of WORLD_WIDTH from -2x to +2x, so dragging left or right
+// slides into a repeating copy of the world instead of hitting a hard edge
+// or running into blank space — a 5-world-wide strip is far more than a
+// user will pan through in one sitting.
+const WORLD_WIDTH = SCALE * 2 * Math.PI;
+const COPY_OFFSETS = [-2, -1, 0, 1, 2].map((n) => n * WORLD_WIDTH);
+
 function WorldMap({ onCountryClick, interactive = true, className = "" }) {
   const [hover, setHover] = useState(null); // geo.id
   const hovered = hover ? NUM_TO_COUNTRY[hover] : null;
+
+  const renderCountries = (geographies) =>
+    geographies.map((geo) => {
+      const c = NUM_TO_COUNTRY[geo.id];
+      const fill = c ? worldRampColor(c.rpp.all) : NO_DATA;
+      const clickable = interactive && Boolean(c);
+      return (
+        <Geography
+          key={geo.rsmKey}
+          geography={geo}
+          tabIndex={clickable ? 0 : -1}
+          aria-label={
+            c
+              ? `${c.name}: price level ${c.rpp.all.toFixed(1)}`
+              : `${geo.properties.name}: no data`
+          }
+          onMouseEnter={() => clickable && setHover(geo.id)}
+          onMouseLeave={() => clickable && setHover(null)}
+          onFocus={() => clickable && setHover(geo.id)}
+          onBlur={() => clickable && setHover(null)}
+          onClick={() => clickable && onCountryClick?.(c)}
+          onKeyDown={(e) => {
+            if (clickable && (e.key === "Enter" || e.key === " ")) {
+              e.preventDefault();
+              onCountryClick?.(c);
+            }
+          }}
+          style={{
+            default: {
+              fill,
+              stroke: "#fbfbfd",
+              strokeWidth: 0.4,
+              outline: "none",
+              cursor: clickable ? "pointer" : "default",
+            },
+            hover: {
+              fill: clickable ? "#1d1d1f" : fill,
+              stroke: "#fbfbfd",
+              strokeWidth: 0.4,
+              outline: "none",
+              cursor: clickable ? "pointer" : "default",
+            },
+            pressed: { fill: "#1d1d1f", outline: "none" },
+          }}
+        />
+      );
+    });
 
   return (
     <div className={`relative ${className}`}>
@@ -85,11 +142,11 @@ function WorldMap({ onCountryClick, interactive = true, className = "" }) {
           dragging left/right. */}
       <div className="overflow-hidden rounded-[18px]">
         <ComposableMap
-          projection="geoEqualEarth"
-          projectionConfig={{ scale: 205 }}
+          projection="geoEquirectangular"
+          projectionConfig={{ scale: SCALE }}
           width={800}
           height={420}
-          aria-label="World map of country price levels; drag to pan"
+          aria-label="World map of country price levels; drag to pan, wraps around left and right"
           style={{
             width: "100%",
             height: "auto",
@@ -97,63 +154,25 @@ function WorldMap({ onCountryClick, interactive = true, className = "" }) {
           }}
         >
           <ZoomableGroup
-            center={[10, 8]}
-            zoom={1}
+            center={[10, 15]}
+            zoom={1.25}
             minZoom={1}
             maxZoom={6}
             translateExtent={[
-              [-150, -60],
-              [950, 480],
+              [COPY_OFFSETS[0] - 150, -60],
+              [COPY_OFFSETS.at(-1) + 950, 480],
             ]}
           >
             <Geographies geography={topology}>
-              {({ geographies }) =>
-                geographies.map((geo) => {
-                  const c = NUM_TO_COUNTRY[geo.id];
-                  const fill = c ? worldRampColor(c.rpp.all) : NO_DATA;
-                  const clickable = interactive && Boolean(c);
-                  return (
-                    <Geography
-                      key={geo.rsmKey}
-                      geography={geo}
-                      tabIndex={clickable ? 0 : -1}
-                      aria-label={
-                        c
-                          ? `${c.name}: price level ${c.rpp.all.toFixed(1)}`
-                          : `${geo.properties.name}: no data`
-                      }
-                      onMouseEnter={() => clickable && setHover(geo.id)}
-                      onMouseLeave={() => clickable && setHover(null)}
-                      onFocus={() => clickable && setHover(geo.id)}
-                      onBlur={() => clickable && setHover(null)}
-                      onClick={() => clickable && onCountryClick?.(c)}
-                      onKeyDown={(e) => {
-                        if (clickable && (e.key === "Enter" || e.key === " ")) {
-                          e.preventDefault();
-                          onCountryClick?.(c);
-                        }
-                      }}
-                      style={{
-                        default: {
-                          fill,
-                          stroke: "#fbfbfd",
-                          strokeWidth: 0.4,
-                          outline: "none",
-                          cursor: clickable ? "pointer" : "default",
-                        },
-                        hover: {
-                          fill: clickable ? "#1d1d1f" : fill,
-                          stroke: "#fbfbfd",
-                          strokeWidth: 0.4,
-                          outline: "none",
-                          cursor: clickable ? "pointer" : "default",
-                        },
-                        pressed: { fill: "#1d1d1f", outline: "none" },
-                      }}
-                    />
-                  );
-                })
-              }
+              {({ geographies }) => (
+                <>
+                  {COPY_OFFSETS.map((dx) => (
+                    <g key={dx} transform={`translate(${dx}, 0)`}>
+                      {renderCountries(geographies)}
+                    </g>
+                  ))}
+                </>
+              )}
             </Geographies>
           </ZoomableGroup>
         </ComposableMap>

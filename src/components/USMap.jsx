@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useState } from "react";
 import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import topology from "us-atlas/states-10m.json";
 import STATES from "../data/states.json";

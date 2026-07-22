@@ -1,13 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { money, pct, shortName } from "../lib/compare.js";
-import {
-  TAX_YEAR,
-  metroState,
-  salesTaxInfo,
-  stateHasIncomeTax,
-  takeHome,
-} from "../lib/tax.js";
+import { TAX_YEAR, metroState, salesTaxInfo, takeHome } from "../lib/tax.js";
 
 const NYC_METRO = "35620";
 

@@ -1,5 +1,10 @@
-import { memo, useMemo, useState } from "react";
-import { ComposableMap, Geographies, Geography } from "react-simple-maps";
+import { memo, useState } from "react";
+import {
+  ComposableMap,
+  Geographies,
+  Geography,
+  ZoomableGroup,
+} from "react-simple-maps";
 import topology from "world-atlas/countries-110m.json";
 import COUNTRIES from "../data/countries.json";
 
@@ -75,63 +80,89 @@ function WorldMap({ onCountryClick, interactive = true, className = "" }) {
 
   return (
     <div className={`relative ${className}`}>
-      <ComposableMap
-        projection="geoEqualEarth"
-        projectionConfig={{ scale: 168, center: [12, 12] }}
-        height={440}
-        aria-label="World map of country price levels"
-        style={{ width: "100%", height: "auto" }}
-      >
-        <Geographies geography={topology}>
-          {({ geographies }) =>
-            geographies.map((geo) => {
-              const c = NUM_TO_COUNTRY[geo.id];
-              const fill = c ? worldRampColor(c.rpp.all) : NO_DATA;
-              const clickable = interactive && Boolean(c);
-              return (
-                <Geography
-                  key={geo.rsmKey}
-                  geography={geo}
-                  tabIndex={clickable ? 0 : -1}
-                  aria-label={
-                    c
-                      ? `${c.name}: price level ${c.rpp.all.toFixed(1)}`
-                      : `${geo.properties.name}: no data`
-                  }
-                  onMouseEnter={() => clickable && setHover(geo.id)}
-                  onMouseLeave={() => clickable && setHover(null)}
-                  onFocus={() => clickable && setHover(geo.id)}
-                  onBlur={() => clickable && setHover(null)}
-                  onClick={() => clickable && onCountryClick?.(c)}
-                  onKeyDown={(e) => {
-                    if (clickable && (e.key === "Enter" || e.key === " ")) {
-                      e.preventDefault();
-                      onCountryClick?.(c);
-                    }
-                  }}
-                  style={{
-                    default: {
-                      fill,
-                      stroke: "#fbfbfd",
-                      strokeWidth: 0.4,
-                      outline: "none",
-                      cursor: clickable ? "pointer" : "default",
-                    },
-                    hover: {
-                      fill: clickable ? "#1d1d1f" : fill,
-                      stroke: "#fbfbfd",
-                      strokeWidth: 0.4,
-                      outline: "none",
-                      cursor: clickable ? "pointer" : "default",
-                    },
-                    pressed: { fill: "#1d1d1f", outline: "none" },
-                  }}
-                />
-              );
-            })
-          }
-        </Geographies>
-      </ComposableMap>
+      {/* Fixed window: the map is drawn at natural proportions and
+          overflows horizontally, so it is clipped here and revealed by
+          dragging left/right. */}
+      <div className="overflow-hidden rounded-[18px]">
+        <ComposableMap
+          projection="geoEqualEarth"
+          projectionConfig={{ scale: 205 }}
+          width={800}
+          height={420}
+          aria-label="World map of country price levels; drag to pan"
+          style={{
+            width: "100%",
+            height: "auto",
+            cursor: interactive ? "grab" : "default",
+          }}
+        >
+          <ZoomableGroup
+            center={[10, 8]}
+            zoom={1}
+            minZoom={1}
+            maxZoom={6}
+            translateExtent={[
+              [-150, -60],
+              [950, 480],
+            ]}
+          >
+            <Geographies geography={topology}>
+              {({ geographies }) =>
+                geographies.map((geo) => {
+                  const c = NUM_TO_COUNTRY[geo.id];
+                  const fill = c ? worldRampColor(c.rpp.all) : NO_DATA;
+                  const clickable = interactive && Boolean(c);
+                  return (
+                    <Geography
+                      key={geo.rsmKey}
+                      geography={geo}
+                      tabIndex={clickable ? 0 : -1}
+                      aria-label={
+                        c
+                          ? `${c.name}: price level ${c.rpp.all.toFixed(1)}`
+                          : `${geo.properties.name}: no data`
+                      }
+                      onMouseEnter={() => clickable && setHover(geo.id)}
+                      onMouseLeave={() => clickable && setHover(null)}
+                      onFocus={() => clickable && setHover(geo.id)}
+                      onBlur={() => clickable && setHover(null)}
+                      onClick={() => clickable && onCountryClick?.(c)}
+                      onKeyDown={(e) => {
+                        if (clickable && (e.key === "Enter" || e.key === " ")) {
+                          e.preventDefault();
+                          onCountryClick?.(c);
+                        }
+                      }}
+                      style={{
+                        default: {
+                          fill,
+                          stroke: "#fbfbfd",
+                          strokeWidth: 0.4,
+                          outline: "none",
+                          cursor: clickable ? "pointer" : "default",
+                        },
+                        hover: {
+                          fill: clickable ? "#1d1d1f" : fill,
+                          stroke: "#fbfbfd",
+                          strokeWidth: 0.4,
+                          outline: "none",
+                          cursor: clickable ? "pointer" : "default",
+                        },
+                        pressed: { fill: "#1d1d1f", outline: "none" },
+                      }}
+                    />
+                  );
+                })
+              }
+            </Geographies>
+          </ZoomableGroup>
+        </ComposableMap>
+      </div>
+      {interactive && (
+        <p className="mt-2 text-center text-[11.5px] text-ink-4">
+          Drag to pan · scroll to zoom
+        </p>
+      )}
       {interactive && hovered && (
         <div className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 rounded-full bg-ink px-3.5 py-1.5 text-[13px] font-semibold text-white shadow-lg">
           {hovered.name}:{" "}
